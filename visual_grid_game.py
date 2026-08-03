@@ -11,6 +11,18 @@ class VisualGridHuntGame:
         self.height = height
         self.agent_pos = [0, 0]  # Starting position (x, y)
 
+        self.toxic_traps = set()
+        while len(self.toxic_traps) < 5:
+            tx = random.randint(0, self.width - 1)
+            ty = random.randint(0, self.height - 1)
+            pos_tuple = (tx, ty)
+            if (pos_tuple != (0,0)
+                    and pos_tuple not in self.walls
+                    and pos_tuple not in self.food_positions):
+                self.toxic_traps.add(pos_tuple)
+
+
+
         if custom_walls is not None:
             self.walls = set(custom_walls)
         else:
@@ -182,5 +194,5 @@ class GridGameGUI:
 if __name__ == "__main__":
     root = tk.Tk()
     # Try a larger grid size like 12x12 with 15 food and 3 opponents!
-    app = GridGameGUI(root, width=12, height=12, num_food=15, num_opponents=0)
+    app = GridGameGUI(root, width=12, height=12, num_food=15, num_opponents=2)
     root.mainloop()
