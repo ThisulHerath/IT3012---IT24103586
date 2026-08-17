@@ -3,6 +3,11 @@ import random
 import tkinter as tk
 
 
+DIRS = {'Up' : (0,1), 'Down' : (0,-1), 'Left' : (-1,0), 'Right' : (1,0)}
+TURN_LEFT_MAP = {'Up': 'Left', 'Left': 'Down', 'Down': 'Right', 'Right': 'Up'}
+TURN_RIGHT_MAP = {'Up': 'Right', 'Right': 'Down', 'Down': 'Left', 'Left': 'Up'}
+
+
 class VisualGridHuntGame:
     """A flexible Pacman-style grid environment with support for configurable opponents and larger scales."""
 
@@ -10,6 +15,7 @@ class VisualGridHuntGame:
         self.width = width
         self.height = height
         self.agent_pos = [0, 0]  # Starting position (x, y)
+        self.facing = 'Right'
 
 
         if custom_walls is not None:
@@ -50,35 +56,45 @@ class VisualGridHuntGame:
         self.steps = 0
         self.collision = False
 
+    def _cell_ahead(self):
+        dx, dy = DIRS[self.facing]
+        ax, ay = self.agent_pos
+        return (ax + dx, ay + dy)
+    
     def get_percept(self) -> dict:
+        ax, ay = self._cell_ahead()
+        wall_ahead = (
+            ax < 0 or ax >= self.width or
+            ay < 0 or ay >= self.height or
+            (ax, ay) in self.walls
+        )
         return {
-            'agent_pos': list(self.agent_pos),
-            'opponent_positions': [list(op) for op in self.opponents],
-            'smells_food': tuple(self.agent_pos) in self.food_positions,
-            'smells_toxin': tuple(self.agent_pos) in self.toxic_traps,
-            'hit_wall': tuple(self.agent_pos) in self.walls,
+            'facing': self.facing,
+            'wall_ahead': wall_ahead,
+            'food_here': tuple(self.agent_pos) in self.food_positions,
+            'toxin_here': tuple(self.agent_pos) in self.toxic_traps,
             'collision': self.collision,
             'score': self.score,
-            'remaining_food': len(self.food_positions)
-        }
+            'remaining_food': len(self.food_positions),
+    }
 
     def execute_action(self, action: str):
         self.steps += 1
-        new_pos = list(self.agent_pos)
 
-        if action == 'Up':
-            new_pos[1] = min(self.height - 1, new_pos[1] + 1)
-        elif action == 'Down':
-            new_pos[1] = max(0, new_pos[1] - 1)
-        elif action == 'Left':
-            new_pos[0] = max(0, new_pos[0] - 1)
-        elif action == 'Right':
-            new_pos[0] = min(self.width - 1, new_pos[0] + 1)
-
-        if tuple(new_pos) in self.walls:
-            self.score -= 5
-        else:
-            self.agent_pos = new_pos
+        if action == 'turn_left':
+            self.facing = TURN_LEFT_MAP[self.facing]
+        elif action == 'turn_right':
+            self.facing = TURN_RIGHT_MAP[self.facing]
+        elif action == 'move_forward':
+            dx, dy = DIRS[self.facing]
+            new_pos = [self.agent_pos[0] + dx, self.agent_pos[1] + dy]
+            nx, ny = new_pos
+            hit_wall = (nx < 0 or nx >= self.width or ny < 0 or ny >= self.height
+                        or tuple(new_pos) in self.walls)
+            if hit_wall:
+                self.score -= 5
+            else:
+                self.agent_pos = new_pos
 
         tuple_pos = tuple(self.agent_pos)
         if tuple_pos in self.food_positions:
