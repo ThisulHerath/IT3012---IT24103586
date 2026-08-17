@@ -137,6 +137,65 @@ class SimpleReflexAgent:
 
         return action
 
+class ModelBasedAgent:
+    """Maintains internal state: estimated position, facing, visited cells,
+    AND a per-cell memory of which directions are known walls (learned from
+    sensing, not from movement — this is what actually lets it escape)."""
+
+    def __init__(self, start_pos=(0, 0), start_facing='Right'):
+        self.estimated_pos = list(start_pos)
+        self.facing = start_facing
+        self.visited_cells = {tuple(start_pos)}
+        self.known_walls = {}          # cell -> set of facings verified as walls
+        self.last_action = None
+        self.stuck_turns = 0           # consecutive turns with no move, at this cell
+
+    def _update_state(self, percept: dict):
+        if self.last_action == 'turn_left':
+            self.facing = TURN_LEFT_MAP[self.facing]
+        elif self.last_action == 'turn_right':
+            self.facing = TURN_RIGHT_MAP[self.facing]
+        elif self.last_action == 'move_forward':
+            dx, dy = DIRS[self.facing]
+            self.estimated_pos = [self.estimated_pos[0] + dx, self.estimated_pos[1] + dy]
+            self.visited_cells.add(tuple(self.estimated_pos))
+            self.stuck_turns = 0       # progress made, reset the stuck counter
+
+        # Record what the sensor is telling us RIGHT NOW about this cell
+        cell = tuple(self.estimated_pos)
+        if percept['wall_ahead']:
+            self.known_walls.setdefault(cell, set()).add(self.facing)
+
+    def sense_and_act(self, percept: dict) -> str:
+        self._update_state(percept)
+        cell = tuple(self.estimated_pos)
+        walls_here = self.known_walls.get(cell, set())
+
+        if percept['food_here']:
+            action = 'move_forward'
+        elif percept['wall_ahead']:
+            self.stuck_turns += 1
+            left_facing = TURN_LEFT_MAP[self.facing]
+            right_facing = TURN_RIGHT_MAP[self.facing]
+
+            if self.stuck_turns >= 4:
+                # Full rotation made at this cell and still stuck — force a
+                # direction we haven't already confirmed as a wall.
+                action = 'turn_right' if right_facing not in walls_here else 'turn_left'
+            elif left_facing in walls_here:
+                # We already know left is a wall here — don't repeat it
+                action = 'turn_right'
+            else:
+                action = 'turn_left'
+        else:
+            action = 'move_forward'
+            self.stuck_turns = 0
+
+        self.last_action = action
+        return action
+
+
+
 class GridGameGUI:
     """Tkinter wrapper that dynamically scales cell sizes to keep larger grids on screen."""
 
@@ -146,7 +205,7 @@ class GridGameGUI:
 
         self.env = VisualGridHuntGame(width=width, height=height, num_food=num_food, num_opponents=num_opponents,
                                       custom_walls=walls)
-        self.agent = SimpleReflexAgent()
+        self.agent = ModelBasedAgent(start_pos=tuple(self.env.agent_pos), start_facing=self.env.facing)
 
         # Dynamically calculate cell size so the total canvas fits nicely within a 600x600 window ceiling
         max_canvas_dim = 600
@@ -238,9 +297,10 @@ class GridGameGUI:
 
         step()
 
+TRAP_WALLS = [(1, 0), (1, 2)]
 
 if __name__ == "__main__":
     root = tk.Tk()
     # Try a larger grid size like 12x12 with 15 food and 3 opponents!
-    app = GridGameGUI(root, width=12, height=12, num_food=15, num_opponents=0)
+    app = GridGameGUI(root, width=12, height=12, num_food=15, num_opponents=0, walls=TRAP_WALLS)
     root.mainloop()
