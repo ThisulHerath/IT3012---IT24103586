@@ -19,7 +19,48 @@ class SearchAgent:
     def __init__(self, start_pos=(0,0)):
         self.estimated_pos = tuple(start_pos)
         self.plan = []
-        self.activate_algo = 'BFS'
+        self.active_algo = 'UCS'
+
+    def _get_closest_food(self, current_pos, food_list):
+        """Finds the food pellet with the shortest Manhattan distance."""
+        return min(
+            food_list,
+            key=lambda f: abs(f[0] - current_pos[0]) + abs(f[1] - current_pos[1])
+        )
+
+    def sense_and_act(self, percept: dict) -> str:
+        # Update current position directly from percept if provided, else fallback to tracking
+        current_pos = tuple(percept.get('agent_pos', self.estimated_pos))
+
+        # Check if current plan is empty
+        if not self.plan:
+            all_food = percept['all_food']
+            if not all_food:
+                return 'Stay'  # No food left
+
+            # Find closest food target
+            target_food = self._get_closest_food(current_pos, all_food)
+
+            # Generate path plan using the active search algorithm
+            grid_size = percept['grid_size']
+            walls = set(percept['walls'])
+
+            if self.active_algo == 'BFS':
+                self.plan = self.bfs_search(current_pos, target_food, grid_size, walls)
+            elif self.active_algo == 'DFS':
+                self.plan = self.dfs_search(current_pos, target_food, grid_size, walls)
+            elif self.active_algo == 'UCS':
+                self.plan = self.ucs_search(current_pos, target_food, grid_size, walls)
+
+        # Execute next step in plan
+        if self.plan:
+            action = self.plan.pop(0)
+            
+            # Map directional actions directly to environment actions if needed
+            # Assuming environment accepts direct movement commands ('Up', 'Down', 'Left', 'Right')
+            return action
+
+        return 'Stay'
 
     def get_neighbors(self, state, grid_size, walls):
         x, y = state

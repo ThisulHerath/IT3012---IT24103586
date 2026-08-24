@@ -1,6 +1,7 @@
 # visual_grid_game.py
 import random
 import tkinter as tk
+from agent import SearchAgent
 
 
 DIRS = {'Up' : (0,1), 'Down' : (0,-1), 'Left' : (-1,0), 'Right' : (1,0)}
@@ -69,6 +70,7 @@ class VisualGridHuntGame:
             (ax, ay) in self.walls
         )
         return {
+            'agent_pos': tuple(self.agent_pos),
             'facing': self.facing,
             'wall_ahead': wall_ahead,
             'food_here': tuple(self.agent_pos) in self.food_positions,
@@ -85,7 +87,18 @@ class VisualGridHuntGame:
     def execute_action(self, action: str):
         self.steps += 1
 
-        if action == 'turn_left':
+        if action in DIRS:
+            dx, dy = DIRS[action]
+            new_pos = [self.agent_pos[0] + dx, self.agent_pos[1] + dy]
+            nx, ny = new_pos
+            hit_wall = (nx < 0 or nx >= self.width or ny < 0 or ny >= self.height
+                        or tuple(new_pos) in self.walls)
+            if hit_wall:
+                self.score -= 5
+            else:
+                self.agent_pos = new_pos
+
+        elif action == 'turn_left':
             self.facing = TURN_LEFT_MAP[self.facing]
         elif action == 'turn_right':
             self.facing = TURN_RIGHT_MAP[self.facing]
@@ -209,7 +222,7 @@ class GridGameGUI:
 
         self.env = VisualGridHuntGame(width=width, height=height, num_food=num_food, num_opponents=num_opponents,
                                       custom_walls=walls)
-        self.agent = ModelBasedAgent(start_pos=tuple(self.env.agent_pos), start_facing=self.env.facing)
+        self.agent = SearchAgent(start_pos=tuple(self.env.agent_pos))
 
         # Dynamically calculate cell size so the total canvas fits nicely within a 600x600 window ceiling
         max_canvas_dim = 600
