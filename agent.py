@@ -20,7 +20,7 @@ class SearchAgent:
     def __init__(self, start_pos=(0,0)):
         self.estimated_pos = tuple(start_pos)
         self.plan = []
-        self.active_algo = 'UCS'
+        self.active_algo = 'AStar'
 
     def manhattan_distance(self, pos, goal):
         x1, y1 = pos
@@ -63,16 +63,44 @@ class SearchAgent:
                 self.plan = self.dfs_search(current_pos, target_food, grid_size, walls)
             elif self.active_algo == 'UCS':
                 self.plan = self.ucs_search(current_pos, target_food, grid_size, walls)
+            elif self.active_algo == 'AStar':
+                self.plan = self.astar_search(
+                    current_pos,
+                    target_food,
+                    walls,
+                    grid_size,
+                    heuristic_type='manhattan'
+                )
 
-        # Execute next step in plan
+        # Turn toward the next planned direction, then move once aligned.
+        # Keep the step in the plan until the move has actually been issued.
         if self.plan:
-            action = self.plan.pop(0)
-            
-            # Map directional actions directly to environment actions if needed
-            # Assuming environment accepts direct movement commands ('Up', 'Down', 'Left', 'Right')
+            desired_direction = self.plan[0]
+            action = self.direction_to_action(desired_direction, percept['facing'])
+            if action == 'move_forward':
+                self.plan.pop(0)
             return action
 
+        # No route is available to the selected food pellet.
         return 'Stay'
+
+    def direction_to_action(self, desired_direction, current_facing):
+        directions = ['Up', 'Right', 'Down', 'Left']
+
+        current_index = directions.index(current_facing)
+        desired_index = directions.index(desired_direction)
+
+        difference = (desired_index - current_index) % 4
+
+        if difference == 0:
+            return 'move_forward'
+        elif difference == 1:
+            return 'turn_right'
+        elif difference == 3:
+            return 'turn_left'
+        else:
+            # Opposite direction
+            return 'turn_right'
 
     def get_neighbors(self, state, grid_size, walls):
         x, y = state
@@ -329,3 +357,26 @@ class SearchAgent:
 #     print("Euclidean distance:", agent.euclidean_distance((0, 0), (3, 4)))
     
     
+if __name__ == "__main__":
+    agent = SearchAgent(start_pos=(0, 0))
+
+    percept = {
+        'agent_pos': (0, 0),
+        'facing': 'Right',
+        'all_food': [(4, 4)],
+        'remaining_food': 1,
+        'grid_size': (5, 5),
+        'walls': {
+            (1, 1),
+            (1, 2),
+            (2, 2),
+            (3, 2)
+        }
+    }
+
+    print("Algorithm:", agent.active_algo)
+
+    action = agent.sense_and_act(percept)
+
+    print("First action:", action)
+    print("Remaining plan:", agent.plan)

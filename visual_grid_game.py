@@ -64,25 +64,26 @@ class VisualGridHuntGame:
     
     def get_percept(self) -> dict:
         ax, ay = self._cell_ahead()
+
         wall_ahead = (
             ax < 0 or ax >= self.width or
             ay < 0 or ay >= self.height or
             (ax, ay) in self.walls
         )
+
         return {
             'agent_pos': tuple(self.agent_pos),
             'facing': self.facing,
             'wall_ahead': wall_ahead,
             'food_here': tuple(self.agent_pos) in self.food_positions,
+            'all_food': list(self.food_positions),
+            'remaining_food': len(self.food_positions),
+            'grid_size': (self.width, self.height),
+            'walls': list(self.walls),
             'toxin_here': tuple(self.agent_pos) in self.toxic_traps,
             'collision': self.collision,
             'score': self.score,
-            'remaining_food': len(self.food_positions),
-
-            'grid_size' : (self.width, self.height),
-            'walls' : list(self.walls),
-            'all_food' : list(self.food_positions),
-    }
+        }
 
     def execute_action(self, action: str):
         self.steps += 1
