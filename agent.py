@@ -1,6 +1,7 @@
 # agent.py
 from collections import deque
 import heapq
+import math
 
 
 class GreedyGridAgent:
@@ -20,6 +21,17 @@ class SearchAgent:
         self.estimated_pos = tuple(start_pos)
         self.plan = []
         self.active_algo = 'UCS'
+
+    def manhattan_distance(self, pos, goal):
+        x1, y1 = pos
+        x2, y2 = goal
+        return abs(x1 - x2) + abs(y1 - y2)
+
+    def euclidean_distance(self, pos, goal):
+        x1, y1 = pos
+        x2, y2 = goal
+
+        return math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
     def _get_closest_food(self, current_pos, food_list):
         """Finds the food pellet with the shortest Manhattan distance."""
@@ -173,3 +185,12 @@ class SearchAgent:
                     )
 
         return []
+
+
+# if __name__ == "__main__":
+#     agent = SearchAgent()
+# 
+#     print("Manhattan distance:", agent.manhattan_distance((0, 0), (3, 4)))
+#     print("Euclidean distance:", agent.euclidean_distance((0, 0), (3, 4)))
+    
+    
